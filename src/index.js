@@ -1,4 +1,4 @@
-var records = [
+const records = [
   {
     "id": 1,
     "title": "Currying Things",
@@ -118,6 +118,10 @@ var records = [
 ];
 
 // NOTE: Utils
+const toString = Object.prototype.toString;
+const isFunction = o => toString.call(o) == '[object Function]';
+
+const getWith = p => x => x[p];
 const reverseArgs = fn => (...args) => fn(...args.reverse());
 const curry = (fn, N = fn.length) => {
 	return (function nextCurried(prevArgs) {
@@ -130,20 +134,46 @@ const curry = (fn, N = fn.length) => {
 }
 const curryRight = (fn, N = fn.length) => curry(reverseArgs(fn), N);
 const filter = (fn, list) => list.filter(fn);
+const map = (fn, list) => list.map(fn);
+const flatten = list => list.reduce((items, item) => {
+  return Array.isArray(item) ? [...items, ...item] : item;
+}, []);
 const useWith = (fn, ...fns) => {
   return (...args) => {
     const fargs = args.slice(0, fns.length).map((arg, i) => fns[i](arg));
     return fn(...fargs, ...args.slice(fns.length));
   }
 }
+const group = (prop, list) => {
+  return list.reduce((grouped, item) => {
+    const key = isFunction(prop) ? prop.apply(this, [item]) : prop;
+    grouped[key] = grouped[key] || [];
+    grouped[key].push(item);
+    return grouped;
+  }, {});
+}
+
 
 const filterWith = curry(filter);
+const mapWith = curry(map);
+const flattenMapWith = curry((fn, list) => flatten(mapWith(fn)(list)));
+const groupBy = curry(group);
+const pair = (list, listFn) => {
+  Array.isArray(list) || (list = [list]);
+  isFunction(listFn) || Array.isArray(listFn) || (listFn = [listFn]);
+
+  return flattenMapWith((itemLeft) => {
+    return mapWith((itemRight) => {
+      return [itemLeft, itemRight];
+    }) (isFunction(listFn) ? listFn.call(this, itemLeft) : listFn);
+  })(list);
+}
 const GTE = (a, b) => a >= b;
-const prop = p => x => x[p];
 
 const thirtyDaysAgo = (new Date('2015-07-29')).getTime() - (86400000 * 30);
 const within30Days = curryRight(GTE)(thirtyDaysAgo);
-const bar = filterWith(useWith(within30Days, prop('published')))(records);
+const filtered = filterWith(useWith(within30Days, getWith('published')))(records);
+
 
 
 
